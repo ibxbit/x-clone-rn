@@ -12,10 +12,10 @@ const commentSchema = new mongoose.Schema(
             ref: "Post",
             required: true,
         },
-        contnet: {
+        content: {
             type: String,
             required: true,
-            maxLenght: 280,
+            maxLength: 280,
         },
         likes: [
             {
@@ -23,9 +23,9 @@ const commentSchema = new mongoose.Schema(
                 ref: "User",
             },
         ],
-    },{ timestamps: true }
+    },
+    { timestamps: true }
 );
-
 const Comment = mongoose.model("Comment", commentSchema);
 
 export default Comment;
