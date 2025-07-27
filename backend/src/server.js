@@ -38,6 +38,10 @@ app.get("/", (req, res) => {
 app.get("/favicon.ico", (req, res) => {
   res.status(204).end(); // 204 No Content
 });
+app.get("/favicon.png", (req, res) => {
+  res.status(204).end(); // 204 No Content for favicon.png
+});
+
 
 // API Routes
 app.use("/api/users", userRoutes);
