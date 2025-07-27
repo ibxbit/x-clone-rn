@@ -2,44 +2,61 @@
 
 import express from "express";
 import cors from "cors";
-import { clerkMiddleware } from "@clerk/express";
+import { clerkMiddleware } from "@clerk/express"; // <-- REVERTED IMPORT - NO createRouteMatcher HERE!
 
 import userRoutes from "./routes/user.route.js";
 import postRoutes from "./routes/post.route.js";
 import commentRoutes from "./routes/comment.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 
-import { ENV } from "./config/env.js"; // Make sure ENV.PORT is defined for local dev
+import { ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { arcjetMiddleware } from "./middleware/arcjet.middleware.js";
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Apply clerk and arcjet middleware
-// Make sure clerkMiddleware() is properly configured for your Clerk instance
-// and that arcjetMiddleware is set up to allow requests.
-app.use(clerkMiddleware());
+// --- Clerk Middleware with publicRoutes configuration ---
+// This is the common way to define public routes directly within the middleware options.
+app.use(clerkMiddleware({
+  // Define an array of routes that should be publicly accessible
+  // These are paths that will NOT require authentication
+  publicRoutes: [
+    '/',             // Allows access to your root path
+    '/favicon.ico',  // Allows access to favicon.ico
+    '/favicon.png',  // Allows access to favicon.png
+    // You can use wildcards if necessary, e.g., '/api/public/(.*)'
+    // Add any other specific API endpoints that should be publicly accessible
+    // e.g., '/api/posts/public'
+  ],
+  // If you want to allow all users (even unauthenticated) to access certain API routes
+  // while still running the middleware for context, you might add them here too.
+  // ignoreRoutes: ['/api/some-public-endpoint'], // Another option, but publicRoutes is usually preferred for entire paths
+}));
+
+// IMPORTANT: Ensure arcjetMiddleware is compatible or configured correctly
+// if it's also blocking.
 app.use(arcjetMiddleware);
 
+
 // --- Connect to DB immediately (for Vercel deployment) ---
-// This ensures the DB connection is established when the serverless function cold starts
-connectDB(); // Call connectDB directly here
+connectDB();
 
 // Basic route to confirm server is running and accessible
 app.get("/", (req, res) => {
-  res.status(200).send("Hello from server");
+  res.status(200).send("Hello from server. API is running!");
 });
 
-// Favicon.ico route (optional, but good to prevent 403s if requested)
+// Favicon.ico route (explicitly handled)
 app.get("/favicon.ico", (req, res) => {
-  res.status(204).end(); // 204 No Content
+  res.status(204).end();
 });
+
+// Favicon.png route
 app.get("/favicon.png", (req, res) => {
-  res.status(204).end(); // 204 No Content for favicon.png
+  res.status(204).end();
 });
 
 
@@ -49,22 +66,17 @@ app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// Error handling middleware (should be the last `app.use`)
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
-  // Ensure a proper status code is sent, not just 500 always.
-  // Example: if err.statusCode exists, use that, otherwise default to 500
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({ error: err.message || "Internal server error" });
 });
 
-// --- Local Development Listen (Conditional) ---
-// This part is ONLY for running your server locally with 'node src/server.js'
+// Local Development Listen (Conditional)
 if (ENV.NODE_ENV !== "production") {
   app.listen(ENV.PORT, () => console.log("Server is up and running on PORT:", ENV.PORT));
 }
 
-// --- EXPORT THE APP FOR VERCEL ---
-// Vercel expects the 'app' instance to be exported directly.
-// It will handle starting the server based on this export.
+// EXPORT THE APP FOR VERCEL
 export default app;
